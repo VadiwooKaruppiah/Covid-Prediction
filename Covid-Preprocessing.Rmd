@@ -1,0 +1,1198 @@
+---
+title: "NEW-COVID"
+author: "Vadiwoo Karuppiah"
+date: "5/19/2020"
+output: html_document
+---
+
+ 
+```{r setup, include=FALSE}
+
+
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(corrplot)
+library(ggthemes)
+library(DT)
+library(tidyverse)
+library(ggcorrplot)
+library(caret)
+library(rlang)
+library(FSelector)
+library(FactoMineR)
+library(rpart.plot)
+library(ROCR)
+
+```
+## VIEW OF RAW DATA 
+```{r,view raw data}
+#LATEST DATA
+corona_individual <- read.csv("latestdata.csv")
+#dimesion of data
+dim(corona_individual)
+#column names
+colnames(corona_individual)
+#structure of data
+str(corona_individual)
+#omitting NA values
+corona_individual=na.omit(corona_individual)
+dim(corona_individual)
+```
+#Age
+```{r,age}
+ageColumn <- corona_individual$age
+length(ageColumn)
+ageColumn_Unique <- unique(ageColumn)
+ageColumn_Unique
+summary(corona_individual$age)
+corona_individual$age <- as.numeric(corona_individual$age)
+### OUTLIERS https://rpubs.com/Mentors_Ubiqum/removing_outliers
+boxplot(corona_individual$age, col= "orange")
+outliers <- boxplot(corona_individual$age, plot=FALSE)$out
+
+# First you need find in which rows the outliers are
+corona_individual[which(corona_individual$age %in% outliers),]
+
+# Now you can remove the rows containing the outliers, one possible option is:
+corona_individual <- corona_individual[-which(corona_individual$age %in% outliers),]
+
+# If you check now with boxplot, you will notice that those pesky outliers are gone
+boxplot(corona_individual$age, col= "orange")
+#corona_individual <- corona_individual[between(corona_individual$age, 1, 100),]
+#boxplot(corona_individual$age)
+#meanAge=mean(corona_individual$age,na.rm=T)
+meanAge=mean(corona_individual$age,na.rm=T)
+corona_individual$age=ifelse(is.na(corona_individual$age),meanAge,corona_individual$age)
+#boxplot(corona_individual$age)
+summary(corona_individual$age)
+```
+```{r}
+corona_individual$AgeGroup <- "65-74"
+corona_individual$AgeGroup[corona_individual$age==""]<-"45-64"  
+corona_individual$AgeGroup[corona_individual$age=="38"]<-"18-44"
+corona_individual$AgeGroup[corona_individual$age=="36"]<-"18-44"
+corona_individual$AgeGroup[corona_individual$age=="51"]<-"45-64"        
+corona_individual$AgeGroup[corona_individual$age=="63"]<-"45-64"
+corona_individual$AgeGroup[corona_individual$age=="57"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="62"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="52"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="56"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="20"]<-"0-17"
+corona_individual$AgeGroup[corona_individual$age=="40"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="27"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="69"]<-"65-74"          
+corona_individual$AgeGroup[corona_individual$age=="58"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="54"]<-"45-64"   
+corona_individual$AgeGroup[corona_individual$age=="49"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="25"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="17-65"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="Nov-80"]<-"75-100"      
+corona_individual$AgeGroup[corona_individual$age=="19-75"]<-"65-74"      
+corona_individual$AgeGroup[corona_individual$age=="21-61"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="22-60"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="80"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="46"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="31"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age== "41"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="60"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="50"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="44"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="35"]<-"18-44"         
+corona_individual$AgeGroup[corona_individual$age=="43"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="32"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="37"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="30"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="42"]<-"18-44"      
+corona_individual$AgeGroup[corona_individual$age=="33"]<-"18-44"      
+corona_individual$AgeGroup[corona_individual$age=="26"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="74"]<-"65-74"          
+corona_individual$AgeGroup[corona_individual$age=="45"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="39"]<-"18-44"    
+corona_individual$AgeGroup[corona_individual$age=="34"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="21"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="79"]<-"75-100"         
+
+corona_individual$AgeGroup[corona_individual$age=="76"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="72"]<-"65-74"         
+corona_individual$AgeGroup[corona_individual$age=="47"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="19"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="14"]<-"0-17"         
+corona_individual$AgeGroup[corona_individual$age=="73"]<-"65-74"          
+corona_individual$AgeGroup[corona_individual$age=="53"]<-"45-64"         
+corona_individual$AgeGroup[corona_individual$age=="29"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="15"]<-"0-17"          
+corona_individual$AgeGroup[corona_individual$age=="68"]<-"65-74"          
+corona_individual$AgeGroup[corona_individual$age=="55"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="59"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age=="48"]<-"45-64"          
+corona_individual$AgeGroup[corona_individual$age=="5"]<-"0-17"           
+corona_individual$AgeGroup[corona_individual$age=="3"]<-"0-17"           
+corona_individual$AgeGroup[corona_individual$age=="2"]<-"0-17"           
+corona_individual$AgeGroup[corona_individual$age=="71"]<-"65-74"
+corona_individual$AgeGroup[corona_individual$age=="64"]<-"45-64"         
+corona_individual$AgeGroup[corona_individual$age== "78"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="70"]<-"65-74"          
+corona_individual$AgeGroup[corona_individual$age=="85"]<-"75-100"         
+corona_individual$AgeGroup[corona_individual$age=="23"]<-"18-44"      
+corona_individual$AgeGroup[corona_individual$age=="22"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="28"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="67"]<-"65-74"          
+corona_individual$AgeGroup[corona_individual$age=="11"]<-"0-17"          
+corona_individual$AgeGroup[corona_individual$age=="61"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="6"]<-"0-17"           
+corona_individual$AgeGroup[corona_individual$age=="65"]<-"65-74"          
+corona_individual$AgeGroup[corona_individual$age=="24"]<-"18-44"         
+corona_individual$AgeGroup[corona_individual$age=="89"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="105"]<-"75-100"        
+corona_individual$AgeGroup[corona_individual$age=="10"]<-"0-17"          
+corona_individual$AgeGroup[corona_individual$age=="75"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="4"]<-"0-17"           
+corona_individual$AgeGroup[corona_individual$age=="18"]<-"18-44"          
+corona_individual$AgeGroup[corona_individual$age=="17"]<-"0-17"         
+corona_individual$AgeGroup[corona_individual$age== "8"]<-"0-17"           
+
+corona_individual$AgeGroup[corona_individual$age=="14-60"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="13-65"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="Apr-64"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age=="Feb-87"]<-"75-100" 
+corona_individual$AgeGroup[corona_individual$age=="84"]<-"75-100"         
+corona_individual$AgeGroup[corona_individual$age=="88"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="77"]<-"75-100"          
+
+corona_individual$AgeGroup[corona_individual$age=="83"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="20-57"]<-"18-44"      
+corona_individual$AgeGroup[corona_individual$age=="23-71"]<-"18-44"   
+corona_individual$AgeGroup[corona_individual$age=="6 weeks"]<-"0-17"     
+corona_individual$AgeGroup[corona_individual$age=="30-61"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="0"]<-"0-17"           
+corona_individual$AgeGroup[corona_individual$age=="0.75"]<-"75-100"       
+corona_individual$AgeGroup[corona_individual$age== "13"]<-"0-17"        
+corona_individual$AgeGroup[corona_individual$age=="34-44"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="22-66"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="May-56"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age=="39-77"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age=="27-58"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="25-59"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="Jan-42"]<-"18-44"      
+corona_individual$AgeGroup[corona_individual$age=="Sep-69"]<-"65-74"      
+corona_individual$AgeGroup[corona_individual$age=="23-84"]<-"65-74"      
+corona_individual$AgeGroup[corona_individual$age=="16"]<-"0-17"          
+corona_individual$AgeGroup[corona_individual$age=="22-80"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="19-77"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="Aug-68"]<-"65-74"      
+corona_individual$AgeGroup[corona_individual$age=="21-72"]<-"65-74"      
+corona_individual$AgeGroup[corona_individual$age=="66"]<-"65-74"          
+corona_individual$AgeGroup[corona_individual$age=="40-49"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="82"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="20-29"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="40-89"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age=="60-69"]<-"65-74"       
+corona_individual$AgeGroup[corona_individual$age=="80-89"]<-"75-100"      
+corona_individual$AgeGroup[corona_individual$age== "50-59"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="0.25"]<-"0-17"        
+corona_individual$AgeGroup[corona_individual$age=="13-19"]<-"0-17"   
+corona_individual$AgeGroup[corona_individual$age=="30-39"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="7"]<-"0-17"           
+corona_individual$AgeGroup[corona_individual$age=="70-79"]<-"75-100"       
+corona_individual$AgeGroup[corona_individual$age=="60-60"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="1"]<-"0-17"          
+corona_individual$AgeGroup[corona_individual$age== "80-80"]<-"75-100"       
+corona_individual$AgeGroup[corona_individual$age=="0-6"]<-"0-17"         
+corona_individual$AgeGroup[corona_individual$age=="0-10"]<-"0-17"        
+corona_individual$AgeGroup[corona_individual$age=="19-Oct"]<-"18-44"      
+corona_individual$AgeGroup[corona_individual$age=="96"]<-"75-100"     
+corona_individual$AgeGroup[corona_individual$age=="1.75"]<-"0-17"        
+corona_individual$AgeGroup[corona_individual$age=="0.666666667"]<-"0-17"  
+corona_individual$AgeGroup[corona_individual$age=="12"]<-"0-17"          
+corona_individual$AgeGroup[corona_individual$age=="95"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="16-17"]<-"0-17"      
+corona_individual$AgeGroup[corona_individual$age=="94"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="May-59"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age=="81"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="20-69"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="13-69"]<-"18-44"      
+corona_individual$AgeGroup[corona_individual$age=="90-99"]<-"75-100"       
+corona_individual$AgeGroup[corona_individual$age=="86"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="90"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="12-Nov"]<-"0-17"      
+corona_individual$AgeGroup[corona_individual$age=="40-41"]<-"18-44"      
+corona_individual$AgeGroup[corona_individual$age=="37-38"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="22-23"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="47-48"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="48-49"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="23-24"]<-"18-44"   
+corona_individual$AgeGroup[corona_individual$age=="87-88"]<-"75-100"       
+corona_individual$AgeGroup[corona_individual$age=="26-27"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="87"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="92"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="98"]<-"75-100"      
+corona_individual$AgeGroup[corona_individual$age=="93"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="30-70"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="9"]<-"0-17"           
+corona_individual$AgeGroup[corona_individual$age=="20-70"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="28-35"]<-"18-44"     
+corona_individual$AgeGroup[corona_individual$age=="1.5"]<-"0-17"         
+corona_individual$AgeGroup[corona_individual$age=="16-80"]<-"65-74"       
+corona_individual$AgeGroup[corona_individual$age=="38-68"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="36-45"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="23-72"]<-"65-74"     
+corona_individual$AgeGroup[corona_individual$age=="0.58333"]<-"0-17"     
+corona_individual$AgeGroup[corona_individual$age=="0.08333"]<-"0-17"     
+corona_individual$AgeGroup[corona_individual$age=="0.5"]<-"0-17"         
+corona_individual$AgeGroup[corona_individual$age=="91"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="20-39"]<-"18-44"      
+corona_individual$AgeGroup[corona_individual$age== "90+"]<-"75-100"         
+corona_individual$AgeGroup[corona_individual$age=="0-9"]<-"0-17"        
+corona_individual$AgeGroup[corona_individual$age== "44000"]<-"18-44"      
+corona_individual$AgeGroup[corona_individual$age== "97"]<-"75-100"          
+corona_individual$AgeGroup[corona_individual$age=="30-40"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age== "0-1"]<-"0-17"         
+corona_individual$AgeGroup[corona_individual$age=="18 months"]<-"0-17"   
+corona_individual$AgeGroup[corona_individual$age=="18 month"]<-"0-17"    
+corona_individual$AgeGroup[corona_individual$age=="7 months"]<-"0-17"    
+corona_individual$AgeGroup[corona_individual$age=="4 months"]<-"0-17"   
+corona_individual$AgeGroup[corona_individual$age=="101"]<-"101-121"         
+corona_individual$AgeGroup[corona_individual$age=="13 month"]<-"0-17"    
+corona_individual$AgeGroup[corona_individual$age=="5 months"]<-"0-17"    
+corona_individual$AgeGroup[corona_individual$age=="8 month"]<-"0-17"     
+corona_individual$AgeGroup[corona_individual$age=="100"]<-"75-100"  
+corona_individual$AgeGroup[corona_individual$age=="6 months"]<-"0-17"    
+corona_individual$AgeGroup[corona_individual$age=="9 month"]<-"0-17"     
+corona_individual$AgeGroup[corona_individual$age=="5 month"]<-"0-17"     
+corona_individual$AgeGroup[corona_individual$age=="11 month"]<-"0-17"    
+corona_individual$AgeGroup[corona_individual$age=="18-49"]<-"18-44"      
+corona_individual$AgeGroup[corona_individual$age=="20-30"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="50-99"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="17-66"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="60-99"]<-"65-74"       
+corona_individual$AgeGroup[corona_individual$age=="18-20"]<-"18-44"    
+corona_individual$AgeGroup[corona_individual$age=="0-18"]<-"0-17"        
+corona_individual$AgeGroup[corona_individual$age=="70-70"]<-"65-74"       
+corona_individual$AgeGroup[corona_individual$age=="18-99"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="34-66"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="55-74"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age=="75-"]<-"75-100"         
+corona_individual$AgeGroup[corona_individual$age=="35-54"]<-"18-44" 
+corona_individual$AgeGroup[corona_individual$age=="55-"]<-"45-64"         
+
+corona_individual$AgeGroup[corona_individual$age=="40-50"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="60-70"]<-"65-74"      
+corona_individual$AgeGroup[corona_individual$age=="18-"]<-"18-44"         
+corona_individual$AgeGroup[corona_individual$age=="54-56"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age== "74-76"]<-"65-74"       
+corona_individual$AgeGroup[corona_individual$age=="27-29"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="50-60"]<-"45-64"         
+corona_individual$AgeGroup[corona_individual$age=="18-60"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="65-"]<-"65-74"         
+corona_individual$AgeGroup[corona_individual$age=="0-19"]<-"0-17"        
+corona_individual$AgeGroup[corona_individual$age=="70-100"]<-"75-100"      
+corona_individual$AgeGroup[corona_individual$age=="0-60"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="18 - 100"]<-"45-64"    
+corona_individual$AgeGroup[corona_individual$age=="61-80"]<-"65-74"       
+corona_individual$AgeGroup[corona_individual$age=="121"]<-"101-121"         
+corona_individual$AgeGroup[corona_individual$age=="50-100"]<-"75-100"      
+corona_individual$AgeGroup[corona_individual$age=="60-100"]<-"75-100"     
+corona_individual$AgeGroup[corona_individual$age=="60-"]<-"45-64"         
+corona_individual$AgeGroup[corona_individual$age=="0-20"]<-"0-17"        
+corona_individual$AgeGroup[corona_individual$age=="18-65"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age=="18-50"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="99"]<-"75-100" 
+corona_individual$AgeGroup[corona_individual$age=="41-60"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="50-"]<-"45-64"         
+corona_individual$AgeGroup[corona_individual$age=="40-69"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="30-69"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="14-18"]<-"0-17"      
+corona_individual$AgeGroup[corona_individual$age=="80-"]<-"75-100"         
+corona_individual$AgeGroup[corona_individual$age=="21-"]<-"18-44"         
+corona_individual$AgeGroup[corona_individual$age=="40-45"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="60-79"]<-"65-74"       
+corona_individual$AgeGroup[corona_individual$age=="35-59"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age== "80+"]<-"75-100"         
+corona_individual$AgeGroup[corona_individual$age=="14-May"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age=="15-34"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="0-4"]<-"0-17"         
+corona_individual$AgeGroup[corona_individual$age=="104"]<-"104"    
+corona_individual$AgeGroup[corona_individual$age=="45-49"]<-"45-64"       
+corona_individual$AgeGroup[corona_individual$age=="40-44"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="30-34"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="35-39"]<-"18-44"       
+corona_individual$AgeGroup[corona_individual$age=="20-24"]<-"18-44"    
+corona_individual$AgeGroup[corona_individual$age=="50-54"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age=="25-29"]<-"18-44"      
+corona_individual$AgeGroup[corona_individual$age=="14-Oct"]<-"45-64"      
+corona_individual$AgeGroup[corona_individual$age=="15-19"]<-"18-34"       
+corona_individual$AgeGroup[corona_individual$age=="55-59"]<-"45-64"    
+corona_individual$AgeGroup[corona_individual$age=="60-64"]<-"45-64"   
+corona_individual$AgeGroup[corona_individual$age=="75-79"]<-"75-100"       
+corona_individual$AgeGroup[corona_individual$age=="85+"]<-"75-100"         
+corona_individual$AgeGroup[corona_individual$age=="70-74"]<-"65-74"       
+corona_individual$AgeGroup[corona_individual$age=="65-69"]<-"65-74"      
+corona_individual$AgeGroup[corona_individual$age=="80-84"]<-"75-100"       
+corona_individual$AgeGroup[corona_individual$age=="9-May"]<-"45-64"        
+  
+corona_individual$AgeGroup = as.factor(corona_individual$AgeGroup)
+AgeGroupColumn <- corona_individual$AgeGroup
+length(AgeGroupColumn)
+AgeGroupColumn_Unique <- unique(AgeGroupColumn)
+AgeGroupColumn_Unique
+plot(corona_individual$AgeGroup)
+summary(corona_individual$AgeGroup)                           
+
+```
+## chronic_disease_binary
+```{r, data preprocessing,chronic_disease_binary}
+corona_individual$chronic_disease_binary = as.factor(corona_individual$chronic_disease_binary)
+chronic_disease_binaryColumn <- corona_individual$chronic_disease_binary
+chronic_disease_binaryColumn_Unique <- unique(chronic_disease_binaryColumn)
+chronic_disease_binaryColumn_Unique
+plot(corona_individual$chronic_disease_binary)
+summary(corona_individual$chronic_disease_binary)
+```
+## chronic_disease
+```{r, data preprocessing,chronic_disease}
+corona_individual$chronic_disease = as.factor(corona_individual$chronic_disease)
+chronic_diseaseColumn <- corona_individual$chronic_disease
+chronic_diseaseColumn_Unique <- unique(chronic_diseaseColumn)
+chronic_diseaseColumn_Unique
+plot(corona_individual$chronic_disease)
+
+corona_individual$chronic_disease_1 <- "diabetes and hypertension"
+corona_individual$chronic_disease_2 <- 0
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease=="Chronic pulmonary condition"]<-"chronic pulmonary disease"              
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease=="Chronic pulmonary condition"]<-"none"     
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "HIV positive"]<-"HIV positive"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "HIV positive"]<-"HIV positive"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "Diabetes"]<-"diabetes"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "Diabetes"]<-"none"   
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "Diabetes:Myeloma"]<-"diabetes and myeloma"
+  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "Diabetes:Myeloma"]<-"myeloma"  
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hepatitis B, diabetes"]<-"diabetes and hepatitis B" 
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hepatitis B, diabetes"]<-"hepatitis B"
+        
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension; diabetes"]<-"diabetes and hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension; diabetes"]<-"hypertension"   
+  
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension, diabetes mellitus"]<-"diabetes and hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension, diabetes mellitus"]<-"hypertension"   
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "diabetes"]<-"diabetes"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "diabetes"]<-"none"  
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "kidney dz; on dialysis"]<-"kidney disease"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "kidney dz; on dialysis"]<-"none"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:diabetes"]<-"diabetes and hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:diabetes"]<-"hypertension"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "chronic kidney disease:hypertension:diabetes"]<-"diabetes and kidney disease"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "chronic kidney disease:hypertension:diabetes"]<-"kidney disease"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "asthma:diabetes"]<-"diabetes and asthma"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "asthma:diabetes"]<-"asthma"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "asthma"]<-"asthma"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "asthma"]<-"none"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension"]<-"hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension"]<-"none"
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:diabetes:valvular heart disease"]<-"diabetes and hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:diabetes:valvular heart disease"]<-"hypertension"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "chronic kidney disease"]<-"kidney disease"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "chronic kidney disease"]<-"none"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertensive"]<- "hypertension"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertensive"]<-"none"  
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "Hypertension"]<- "hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "Hypertension"]<-"none"
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "diabetes:hypertension:chronic kidney disease"]<-"diabetes"
+corona_individual$chronic_disease_2[corona_individual$chronic_disease== "diabetes:hypertension:chronic kidney disease"]<- "hypertension"
+
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "diabetes:hypertenstion:upper git bleeding"]<-"diabetes and hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "diabetes:hypertenstion:upper git bleeding"]<-"hypertension"
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "diabetes:hypertension"]<-"diabetes and hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "diabetes:hypertension"]<-"hypertension"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "chronic kidney disease:hypertension"]<-"Hypertension and kidney disease"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "chronic kidney disease:hypertension"]<-"kidney disease"
+
+ 
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "Pre-renal azotemia:cardiomyopathy:hypertension:diabetes"]<-"diabetes and hypertension"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "Pre-renal azotemia:cardiomyopathy:hypertension:diabetes"]<-"hypertension"  
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:diabetes:asthma"]<-"diabetes and hypertension"   
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:diabetes:asthma"]<-"hypertension" 
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:colon cancer"]<-"hypertension and colon cancer"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:colon cancer"]<-"colon cancer" 
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "chronic kidney disease:hypertension:diabetes:ischemic heart disease"]<-"diabetes and hypertension"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "chronic kidney disease:hypertension:diabetes:ischemic heart disease"]<-"hypertension"   
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease==  "pre-renal azotemia:diabetes:hypertension"] <-"diabetes and hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease==  "pre-renal azotemia:diabetes:hypertension"]<-"hypertension"
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "benign prostatic hyperplasia"] <-"benign prostatic hyperplasia"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "benign prostatic hyperplasia"]<-"none" 
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:bronchial asthma:impaired fasting glucose"]<-"diabetes and hypertension" 
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:bronchial asthma:impaired fasting glucose"] <- "hypertension"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:diabetes:dislipidemia"] <-"diabetes and hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:diabetes:dislipidemia"]<-"hypertension"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:renal disease"]<-"hypertension and kidney disease"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:renal disease"]<-"kidney disease"
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:chronic kidney disease"]<-"hypertension and kidney disease"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:chronic kidney disease"]<- "kidney disease" 
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "asthma:hypertension:atherosclerosis:coronary artery disease"]<-"hypertension and astma"   
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "asthma:hypertension:atherosclerosis:coronary artery disease"]<-"asthma"  
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "chronic obstructive pulmonary disease"]<-"chronic pulmonary disease"             
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== 
+#"chronic obstructive pulmonary disease"]<-"none"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:diabetes:chronic kidney disease"]<-"diabetes and hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:diabetes:chronic kidney disease"]<- "hypertension"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "atrial fibrillation:hypertension:atherosclerosis:cerebrovascular infarct"]<-"hypertension and heart disease"       
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "atrial fibrillation:hypertension:atherosclerosis:cerebrovascular infarct"]<-"heart disease"       
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:cardiac disease"]<-"hypertension heart disease"          
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:cardiac disease"]<-"heart disease"       
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:coronary artery disease:diabetes"]<-"diabetes"
+corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:coronary artery disease:diabetes"]<-"hypertension"     
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:hypothyroidism"]<-"hypertension  and hypothyroidism"     
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:hypothyroidism"]<-"hypothyroidism"
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:cardiovascular disease:diabetes"]<-"diabetes and hypertension"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:cardiovascular disease:diabetes"]<-"hypertension"  
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:diabetes:dyslipidemia"]<-"diabetes and hypertension"   
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:diabetes:dyslipidemia"]<-"hypertension"   
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "prostate cancer:chronic obstructive pulmonary disease"]<-"chronic pulmonary disease and prostae cancer"               
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "prostate cancer:chronic obstructive pulmonary disease"]<-"prostate cancer"               
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:hypothyroidism:renal disease"]<- "hypertension and hypothyroidism"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:hypothyroidism:renal disease"]<-"hypothyroidism" 
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:diabetes:tongue cancer:cardiovascular disease:benign prostatic hypertrophy"]<-"diabetes and "
+ 
+corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:diabetes:tongue cancer:cardiovascular disease:benign prostatic hypertrophy"]<-"hypertension and hypertension" 
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "diabetes:cardiac dysrhythmia"]<-"diabetes and heart disease" 
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "diabetes:cardiac dysrhythmia"]<-"heart disease" 
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:diabetes:cardiac disease"]<-"diabetes and hypertension" 
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:diabetes:cardiac disease"]<-"hypertension" 
+
+
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension; diabetes; asthma"]<-"diabetes and hypertension"   
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension; diabetes; asthma"]<-"hypertension"   
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "diabetes:cardiac disease"]<-"diabetes and heart disease"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "diabetes:cardiac disease"]<-"heart disease"  
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hyperthyroidism"]<-"hyperthyroidism"
+corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hyperthyroidism"]<-"none" 
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "myocarditis:diabetes:hypertension"]<-"diabetes and hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "myocarditis:diabetes:hypertension"]<-"hypertension"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "chronic obstructive pulmonary disease:diabetes:dyslipidemia"]<-"diabetes and chronic pulmonary disease"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "chronic obstructive pulmonary disease:diabetes:dyslipidemia"]<-"chronic pulmonary disease"                
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "hypertension:cerebrovascular accident infarct"]<-"hypertension"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "hypertension:cerebrovascular accident infarct"]<-"cerebrovascular accident"   
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "cardiac disease"]<-"heart disease"     
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "cardiac disease"]<-"none"    
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "prostate hypertrophy"]<-"benign prostatic hyperplasia"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "prostate hypertrophy"]<-"none"
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "thought to have had other pre-existing conditions"]<-"diabetes"     
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "thought to have had other pre-existing conditions"]<-"none"   
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "COPD"]<-"chronic pulmonary disease"                 
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "COPD"]<- "none"   
+   
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "type 2 diabetes for 30+ years; hypertension for 9 years; coronary bypass surgery for 2 years;"]<-"diabetes and hypertension"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "type 2 diabetes for 30+ years; hypertension for 9 years; coronary bypass surgery for 2 years;"]<-"hypertension"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "history of hypertension, type 2 diabetes, coronary heart disease for which a stent had been implanted, and lung cancer"]<-"diabetes and hypertension" 
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "history of hypertension, type 2 diabetes, coronary heart disease for which a stent had been implanted, and lung cancer"]<-"hyphertension" 
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "Cronic bronchitis"]<- "chronic bronchitis" 
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "Cronic bronchitis"]<-"none" 
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "diabetes, hypertension"]<-"diabetes and hypertension"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "diabetes, hypertension"]<-"hypertension"  
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "Cardiac problems"]<-"heart disease"      
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== " Cardiac problems "]<-"none"   
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "systemic arterial hypertension"]<-"hypertension"   
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "systemic arterial hypertension"]<-"none"   
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "Previous confirmed case contact"]<-"diabetes"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "Previous confirmed case contact"]<-"none"
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease=="hypertriglyceridemia"]<-"hypertriglyceridemia"
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease=="hypertriglyceridemia"]<-"none"
+
+
+corona_individual$chronic_disease_1[corona_individual$chronic_disease== "https://coronavirus.dc.gov/page/coronavirus-data"]<-"others"
+corona_individual$chronic_disease_2[corona_individual$chronic_disease=="https://coronavirus.dc.gov/page/coronavirus-data"]<-"others"
+ 
+
+
+#corona_individual$chronic_disease_1[corona_individual$chronic_disease== "https://cv.nmhealth.org/2020/03/25/updated-new-mexico-covid-19-cases-now-at-112”]<-"others"  
+#corona_individual$chronic_disease_2[corona_individual$chronic_disease== "https://cv.nmhealth.org/2020/03/25/updated-new-mexico-covid-19-cases-now-at-112"]<-"others"  
+ 
+corona_individual$chronic_disease_1 = as.factor(corona_individual$chronic_disease_1)
+#corona_individual$chronic_disease_2 = as.factor(corona_individual$chronic_disease_2)
+
+chronic_disease_1Column <- corona_individual$chronic_disease_1
+length(chronic_disease_1Column)
+chronic_disease_1Column_Unique <- unique(chronic_disease_1Column)
+chronic_disease_1Column_Unique
+summary(corona_individual$chronic_disease_1)
+plot(corona_individual$chronic_disease_1)
+
+#plot(corona_individual$chronic_disease_2)
+#summary(corona_individual$chronic_disease_2)
+
+
+```
+## symptoms
+```{r, data preprocessing,symptoms}
+corona_individual$symptoms = as.factor(corona_individual$symptoms)
+symptomsColumn <- corona_individual$symptoms
+length(symptomsColumn)
+symptomsColumn_Unique <- unique(symptomsColumn)
+symptomsColumn_Unique
+plot(corona_individual$symptoms)
+
+corona_individual$main_symptom <-"none"
+corona_individual$main_symptom[corona_individual$symptoms==""]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever:headache:malaise:sore throat:cough"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="mild"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="Asymptomatic"]<-"asymptomatic" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever:unproductive cough"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="Mild:moderate"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="Severe"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough:fever"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever:cold:cough"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="yes"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="COVID- related symptoms"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="Mild to moderate"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="no serious symptoms"]<-"none"
+corona_individual$main_symptom[corona_individual$symptoms=="cough:rhinorrhea:sneezing:muscle pain"]<-"cough and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="cough:cold:fever:aches:headache"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough:tired:chest pain"]<-"cough and chest pain" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, severe pneumonia"]<-"fever and pneumonia"
+corona_individual$main_symptom[corona_individual$symptoms=="pneumonia"]<-"pneumonia"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, sore throat"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="dyspnea, fever"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, difficulty breathing, fever"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, headache, runny nose"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, runny nose"]<-"cough"
+corona_individual$main_symptom[corona_individual$symptoms=="transient fatigue"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever ( Â° C)"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms==". Â° C, mild coughing"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="abdominal pain, pulmonary inflammation"]<-"pneumonia" 
+corona_individual$main_symptom[corona_individual$symptoms=="Sore throat"]<-"sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="fever; fatigue; dry cough"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="feeling ill, coughing"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="anorexia, fatigue"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="abdominal pain, diarrhea, fever, general malaise"]<-"fever and abdominal pain" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, malaise"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="poor physical condition"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fatigue, fever"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, shortness of breath"]<-"fever and shortness of breath" 
+corona_individual$main_symptom[corona_individual$symptoms=="discomfort, fever"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, headache, muscular soreness, weak"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever ."]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ)"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever .â„ƒ"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever .â„ƒ"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="anorexia"]<-"anorexia" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, dizziness"]<-"cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="nausea, cough, pneumonia, fever"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="pneumonitis"]<-"pneumonia"
+corona_individual$main_symptom[corona_individual$symptoms=="fever . â„ƒ, cough"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="malaise, headache"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever ( â„ƒ), breathing difficulty"]<-"fever and shortness of breath" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ, then"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="sore throat, Cough, fever ( â„ƒ)"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="difficulty breathing"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, shortness of breath, pneumonia"]<-"fever and pneumonia"
+corona_individual$main_symptom[corona_individual$symptoms=="severe dyspnea"]<-"shortness of breath" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="nausea"]<-"nausea" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever; fatigue"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="chest tightness; fatigue"]<-"fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough; fever"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever; nasal congestion; runny nose; sore throat; cough"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever ."]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="no respiratory symptoms, esophageal reflux"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough; sputum; fever"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="dry cough"]<-"cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough; sore body; cold"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="acute pharyngitis"]<-"sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="sore throat"]<-"sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="low fever . â„ƒ"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="low fever (. â„ƒ)"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="low fever (. Â° C); cough"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fatigue, fever, weakness"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ), malaise"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="sore throat; fever, nasal discharge"]<-"fever and sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. Â° C), pneumonia"]<-"fever and pneumonia" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ), cough"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (- Â° C), malaise"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever . â„ƒ Cough, malaise, anorexia"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="Discharge, cough, sore throat, chest pain"]<-"cough  and chest pain"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, phlegm, dyspnea"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, phlegm"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever . â„ƒ , sore throat"]<-"fever and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="rever, cough"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever . â„ƒ , couh"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever . â„ƒ , cough"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="malaise, fever ( â„ƒ); headache, toothache, pneumonia"]<-"fever and pneumonia"
+corona_individual$main_symptom[corona_individual$symptoms=="Sore throat, chills"]<-"sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="fever . , headache, malaise"]<-"fever and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="Fever, cough, headache"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever ."]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, malaise"]<-"cough and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="sore throat, fever (- â„ƒ)"]<-"fever and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="fatigue, fever ( â„ƒ)"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ)"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="vomiting, cough, fever (. â„ƒ), sore throat"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="dizziness, sore limbs"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever ( Â° C), joint pain"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ), cough"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ), Headache, malaise, joint pain"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ), cough"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ), cough"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever (. â„ƒ), joint pain"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="Cough, fever ( â„ƒ)"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="Fever (. Â° C), malaise, sore throa"]<-"fever and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, sore throat"]<-"cough and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="Fever ( Â° C)"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="Fever (. Â° C), cough, headache."]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, weakness"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, diarrhea, fever, rhinorrhoea, sneezing"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, runny nose"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="chills, headache, fatigue"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, phlegm, fever"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever . â„ƒ"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ), Fatigue, difficulty walking"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ)"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="chills,  fever (38 â„ƒ), malaise"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="Sputum, cough symptoms, fever ( â„ƒ), cough, breathing difficulty"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ), fever (. â„ƒ)"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ ï½ž . â„ƒ)"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever and cough"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="anhelation, cough, fever, pleural effusion, weakness"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="diarrhea, fever, nasal congestion, pleuritic chest pain, sore throat"]<-"fever and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, sore throat, cough, shortness of breath"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, myalgia, rhinorrhea, sore throat"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="aching muscles, fever, pneumonia"]<-"fever and pneumonia" 
+corona_individual$main_symptom[corona_individual$symptoms=="lethargy; dry cough"]<-"cough and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, dcough"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, sore throat"]<-"fever and sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, nasal discharge, fever (. Â° C)"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, general malaise, joint muscle pain"]<-"cough and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, headache, and malaise, influenza"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="Fever, cough, vomiting."]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="Cough, fever (. Â° C)"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever . Â° C Dyspnea with pneumonia"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="headache"]<-"fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever . â„ƒ, diarrhea, nausea, dsypnea, cough, inappetance"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. Â° C), cough, malaise"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ)"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, difficuty breathing"]<-"fever and shortness of breath" 
+corona_individual$main_symptom[corona_individual$symptoms=="malaise, fever, joint pain"]<-"fever and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="malaise, fever, joint pain, phlegm"]<-"fever and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever (.â„ƒ)"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (.â„ƒ)"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, phlegn,"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ), breathing difficulty"]<-"fever and shortness of breath"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ), fatigue, diarrhea"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever ( Â° C), nasal discharge/congestion, sore throat, malaise, joint pain"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, joint pain"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fatigue, fever"]<-"fever and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms==". degrees fever, headache, malaise"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="Fever (. Â° C)"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, headache, cough"]<-"fever and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="breathing difficulty"]<-"shortness of breath" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, weak"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever - C"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever - C"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. - . degrees)"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="backache"]<-"fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, muscular soreness"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. degrees), cough, sore throat"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="Fever, cough, runny nose"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever (.- Â° C), rash"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="mild cough, phlegm"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="sneezing, runny nose and slight fever"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="runny nose"]<-"runny nose" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever  (37.0-5 â„ƒ), malaise"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever  (37.2 â„ƒ)"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="chills, fever (. â„ƒ), mausea, diarrhea"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="fatigue"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="chest distress, cough, expectoration, muscular soreness"]<-"cough and chest pain"
+corona_individual$main_symptom[corona_individual$symptoms=="runny nose, sore throat, mile cough"]<-"cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, headache"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, phlegm"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="Fever ( â„ƒ)"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever ( Â° C), cough"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="sneezing"]<-"cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, headache"]<-"cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (), cough"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="minor fatigue, sore throat"]<-"fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, sneeze"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever ."]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="Cough, headache, general malaise"]<-"cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="discomfort"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, muscular stiffness, weak"]<-"cough and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="Fever, cough, malaise"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="Fever, cough"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="Fever, cough Difficulty breathing"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fatigue, fever, headache"]<-"fever and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever (.)"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (.-), cough"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, pneumonia, malaise"]<-"fever and pneumonia"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, general pain"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="Fever (. degrees), sore throat"]<-"fever and sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="Cough, headache, general malaise, sore throat"]<-"cough and sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory distress syndrome:severe pneumonia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory failure:pneumonia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="fever:cough:acute respiratory distress syndrome"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="fever:cough"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough:sore throat:colds"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever:headache:body malaise"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="none"]<-"asymptomatic" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough:body malaise"]<-"cough and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever:cough:shortness of breath"]<-"fever and shortness of breath"
+corona_individual$main_symptom[corona_individual$symptoms=="cough:colds:dysphagia"]<-"cough and sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="Fever, sore throat"]<-"fever and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough:sore throat:headache"]<-"cough and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="septic shock:cardiogenic shock:acute respiratory distress syndrome:acute renal failure"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="fever ( â„ƒ)"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever:cough:dizziness"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="severe pneumonia"]<-"pneumonia" 
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory failure"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="multiple organ failure:pneumonia"]<-"pneumonia" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever (. â„ƒ)"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory distress syndrome:pneumonia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="phlegm, malaise"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="septic shock:pneumonia"]<-"pneumonia" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, shortness of breath"]<-"fever and shortness of breath"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory distress syndrome"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="cardiac arrhythmia:septic shock:pneumonia"]<-"pneumonia"
+corona_individual$main_symptom[corona_individual$symptoms=="pneumonia:acute respiratory failure:heart failure"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="fever ., cough, fatigue"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever ."]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory distress syndrome:pneumonia:septic shock"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="fever (), inapatence"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="malaise, dyspnea, cough"]<-"cough and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="no clinical symptoms"]<-"asymptomatic" 
+corona_individual$main_symptom[corona_individual$symptoms=="chest distress, dyspnea"]<-"sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="myocardial infarction:pneumonia:multiple electrolyte imbalance"]<-"pneumonia" 
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory disease"]<-"acute respiratory distress syndrome" 
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory distress:pneumonia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, expectoration, fever"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="acute myocardial infarction"]<-"heart failure"
+corona_individual$main_symptom[corona_individual$symptoms=="acute coronary syndrome:congestive heart failure:severe acute respiratory infection"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory failure:pneumonia:sepsis"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory distress syndrome:septic shock:pneumonia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory failure:sepsis:pneumonia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fatigue, fever, sputum"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cardiogenic shock:acute coronary syndrome:heart failure:pneumonia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory failure:pneumonia:myocardial infarction"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute kidney injury:septic shock:acute respiratory distress syndrome"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="arrhythmia:acute respiratory distress syndrome:pneumonia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="sepsis:pneumonia"]<-"pneumonia" 
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory distress syndrome:pneumonia:acute respiratory failure"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory failure:acute kidney injury"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory failure:myocardial dysfunction"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory distress syndrome:septic shock:pneumonia:gastritis:acute kidney injury"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="heart failure:pneumonia"]<-"heart failure"
+corona_individual$main_symptom[corona_individual$symptoms=="chest tightness, dyspnea, fever"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="pneumonia:congestive heart failure"]<-"heart failure" 
+corona_individual$main_symptom[corona_individual$symptoms=="cardiac arrhythmia:pneumonia"]<-"pneumonia" 
+corona_individual$main_symptom[corona_individual$symptoms=="myocardial infarction:acute respiratory distress syndrome:pneumonia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="cardiopulmonary arrest; acute respiratory failure; pneumonia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="arrhythmia:septic shock:acute respiratory disease syndrome: acute kidney injury"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory failure:severe acute respiratory distress syndrome:pneumonia:septic shock"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="arrhythmia:sepsis:acute respiratory distress syndrome:pneumonia:acute kidney injury"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory distress syndrome:pneumonia:hypoxia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="cardiopulmonary arrest: acute respiratory distress syndrome: pneumonia: hypoxia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory distress syndrome:septic shock"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory distress syndrome: pneumonia"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="chills, cough, joint pain"]<-"cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, pneumonia"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="respiratory symptoms"]<-"respiratory symptoms" 
+corona_individual$main_symptom[corona_individual$symptoms=="myalgia, rhinorrhea"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, respiratory symptoms"]<-"fever and shortness of breath"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, soreness"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="pharynx"]<-"sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="muscular soreness"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fatigue, fever, weakness"]<-"fever and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, runny nose"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="diarrhea"]<-"diarrhea" 
+corona_individual$main_symptom[corona_individual$symptoms=="Sore throat, headache, runny nose and tiredness"]<-"sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, dyspnea, fever"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="chills, fever, muscle aches, other symptoms"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fatigue, muscle aches, sore throat"]<-"fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, sore muscle, weakness"]<-"fever and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="systemic weakness, runny nose, fever"]<-"fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, dyspnea"]<-"cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, pharyngeal discomfort"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="chills, headache, fever"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, sore throat, sputum"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="physical discomfort"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="weakness"]<-"fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever; cough"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="chest tightness, fever, nausea"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever; headache; phlegm"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, muscle ache"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="asymptomatic"]<-"asymptomatic" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, muscular soreness, rigor"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="chills, diarrhea, dyspnea, headache, lack of energy, muscle pain"]<-"fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, sputum"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, sputum"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, sore throat, sputum"]<-" cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="chills, fatigue"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, pharyngalgia"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever; dry cough; fatigue"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever; muscle aches; chills"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="sore throat; headache"]<-"sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="chills; abdominal pain"]<-"abdominal pain" 
+corona_individual$main_symptom[corona_individual$symptoms=="sore throat, fever"]<-"fever and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever; cough; sore throat"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough; sore throat; body aches"]<-"cough and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="lesions on chest radiographs"]<-"heart failure" 
+corona_individual$main_symptom[corona_individual$symptoms=="chest tightness"]<-"chest tightness"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, diarrhoea, runny nose"]<-"cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, eventually showed acute left heart failure and acute coronary syndrome"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, high fever, myalgia"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, myalgia"]<-"fever and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, shortness of breath"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever;sore throat; fatigue; diarrhea"]<-"fever and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever; sore throat;fatigue;vomiting"]<-"fever and sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="chest tightness, fever"]<-"fever" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, joint pain, muscle soreness"]<-"fever and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="chills, fever"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="chest pain, nasal congestion"]<-"chest tightness" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, muscle soreness, sweating"]<-"fever and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, myalgia, shortness of breath"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, discomfort, fever, other symptoms"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, pneumonia, respiratory distress"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="chills, fever, runny nose, sore throat, wheezing"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, respiratory problems"]<-"respiratory symptoms"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, pneumonia, sore throat"]<-"fever and pneumonia"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, shortness breath"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="chills, fever, headache, sore throat"]<-"fever and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="coughing, fever, muscle aches"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, myalgia"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, joint pain, pneumonia"]<-"fever and pneumonia" 
+corona_individual$main_symptom[corona_individual$symptoms=="nausea, vomiting"]<-"nausea" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, full body slump"]<-"fever and fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, dry throat, sore throat"]<-"fever and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever; runny nose"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="dry throat; sore throat; fatigue"]<-"fatigue" 
+corona_individual$main_symptom[corona_individual$symptoms=="headache; dry mouth"]<-"sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="fever; dry mouth; throat discomfort"]<-"fever and sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="pharyngeal discomfort"]<-"fever and sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="cough; throat discomfort"]<-"fever and sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="Pharyngeal dryness"]<-"sore throat" 
+corona_individual$main_symptom[corona_individual$symptoms=="dry throat; dry cough"]<-"sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="chest pain, cough"]<-"cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, chest tightness, dry mouth"]<-"cough and sore throat"
+corona_individual$main_symptom[corona_individual$symptoms=="fever; cough; fatigue; nausea"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, diarrheoa, vomiting"]<-"cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="chills, cough, fever"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="asymptomatic, afebrile"]<-"asymptomatic" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, nausea, digestive discomfort"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="aggressive pulmonary symptomatology"]<-"respiratory symptoms"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, chills"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, sore throat"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="mild respiratory symptoms"]<-"respiratory symptoms"
+corona_individual$main_symptom[corona_individual$symptoms=="significant clinical suspicion"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, general weakness, cough"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, general weakness"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="headache, general weakness, runny nose, acute respiratory distress syndrome"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="headache, general weakness, runny nose, mialgia"]<-"fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, running nose"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, sore throat, mialgia, headache"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="Contact of hCoV-/Brazil/SPBR-/"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, nasal congestion, conjuntivitis"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="acute respiratory syndrome"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, nasal congestion"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="Rhinorrhea, pain and unwellness"]<-"runny n"
+corona_individual$main_symptom[corona_individual$symptoms=="Rhinorrhea, cough and fever"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough and milagia, between others"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="mild symptoms"]<-"fever"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, respiratory problems"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="myalgia, headache, fever"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, respiratory problems (lungs)"]<-"fever and shortness of breath"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough and sore throath"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="oligosymptomatic"]<-"asymptomatic" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, body ache, sore throat, headache"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, myalgia, headache"]<-"fever and cough" 
+#corona_individual$main_symptom[corona_individual$symptoms=="febre, tosse, e sintomas respiratâ\šÃ Ã¶â\šÃ¢â\¢rios moderados"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, myalgia"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="chest pain, respiratory distress, fever, dysphagia, asthenia, weakness, fatigue"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="severe, kidney failure and hypertension"]<-"hypertension"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, body ache, mialgia"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, coriza, sore throath, headache, general weakness"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough and general malaise"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="Symptoms associated with a respiratory condition"]<-"respiratory symptoms" 
+corona_individual$main_symptom[corona_individual$symptoms=="Mild respiratory symptoms"]<-"respiratory symptoms"
+corona_individual$main_symptom[corona_individual$symptoms=="Mild resipiratory symptoms, then on March 4 had feverish symptoms"]<-"respiratory symptoms"
+corona_individual$main_symptom[corona_individual$symptoms=="fever, cough, headache"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="first asymptomatic, devleoped mild respiratory sypmptoms (got over virus before being tested)"]<-"respiratory symptoms"
+corona_individual$main_symptom[corona_individual$symptoms=="Respiratory symptoms"]<-"respiratory symptoms"
+corona_individual$main_symptom[corona_individual$symptoms=="Catarrhal symptoms"]<-"catarrhal symptoms" 
+corona_individual$main_symptom[corona_individual$symptoms=="catarrhal symptoms"]<-"catarrhal symptoms" 
+corona_individual$main_symptom[corona_individual$symptoms=="Respiratory"]<-"respiratory symptoms"
+corona_individual$main_symptom[corona_individual$symptoms=="severe respiratory failure"]<-"acute respiratory distress syndrome"
+corona_individual$main_symptom[corona_individual$symptoms=="respiratory"]<-"respiratory symptoms"
+corona_individual$main_symptom[corona_individual$symptoms=="pnuemonia"]<-"pneumonia"
+corona_individual$main_symptom[corona_individual$symptoms=="Pneumonia"]<-"pneumonia"
+corona_individual$main_symptom[corona_individual$symptoms=="respiratory difficult breathing died same day"]<-"respiratory symptoms"
+corona_individual$main_symptom[corona_individual$symptoms=="torpid evolution with respiratory distress and severe bronchopneumonia"]<-"respiratory symptoms"
+corona_individual$main_symptom[corona_individual$symptoms=="Respiratory & Pnuemonia-died //"]<-"respiratory symptoms"
+corona_individual$main_symptom[corona_individual$symptoms=="pnuemonia"]<-"pneumonia"
+corona_individual$main_symptom[corona_individual$symptoms=="kidney failure"]<-"kidney failure" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, difficulty breathing"]<-"fever and cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, sore throat, body aches, fever"]<-"fever and cough"
+corona_individual$main_symptom[corona_individual$symptoms=="dry cough, runny nose, shortness of breath, headache"]<-"cough" 
+corona_individual$main_symptom[corona_individual$symptoms=="cough, body aches, chills"]<-"fever and fatigue"
+corona_individual$main_symptom[corona_individual$symptoms=="cough, fever, nausea"]<-"fever and cough" 
+
+
+
+corona_individual$main_symptom = as.factor(corona_individual$main_symptom)
+main_symptomColumn <- corona_individual$main_symptom
+length(main_symptomColumn)
+main_symptomColumn_Unique <- unique(main_symptomColumn)
+main_symptomColumn_Unique
+plot(corona_individual$main_symptom)
+summary(corona_individual$main_symptom)
+table(corona_individual$main_symptom)
+```
+## outcome
+```{r, data preprocessing,outcome}
+corona_individual$outcome = as.factor(corona_individual$outcome)
+
+outcomeColumn <- corona_individual$outcome
+length(outcomeColumn)
+outcomeColumn_Unique <- unique(outcomeColumn)
+outcomeColumn_Unique
+plot(corona_individual$outcome)
+table(corona_individual$outcome)
+
+corona_individual$Status <- "Status Not Reported"
+
+corona_individual$Status[corona_individual$outcome=="Alive"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="Dead"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="Recovered"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="Stable"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="Died"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="Deceased"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="stable condition"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="Under treatment"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="Critical condition"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="Receiving Treatment"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="stable"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="severe illness"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="unstable"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="dead"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="critical condition"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="recovered"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="discharge"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="discharged"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="death"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="treated in an intensive care unit (14.02.2020)"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="severe"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="released from quarantine"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="died"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="Hospitalized"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="Migrated"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="Symptoms only improved with cough. Currently hospitalized for follow-up."]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="critical condition, intubated as of 14.02.2020 ..."]<-"Critical"
+
+#corona_individual$Status[corona_individual$outcome=="https://www.mspbs.gov.py/covid-19.php"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="Discharged from hospital"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="Death"]<-"Critical"
+corona_individual$Status[corona_individual$outcome=="not hospitalized"]<-"Stable"
+corona_individual$Status[corona_individual$outcome=="recovering at home 03.03.2020"]<-"Stable"
+
+
+
+
+
+
+
+
+#corona_individual$Group[corona_individual$Status==0] <-"Stable"
+#corona_individual$gender[corona_individual$Status=="NA"]<-"Stable"
+
+corona_individual$Status = as.factor(corona_individual$Status)
+StatusColumn <- corona_individual$Status
+length(outcomeColumn)
+StatusColumn_Unique <- unique(StatusColumn)
+StatusColumn_Unique
+plot(corona_individual$Status)
+summary(corona_individual$Status)
+```
+## sex
+```{r, data preprocessing,sex}
+corona_individual$sex = as.factor(corona_individual$sex)
+sexColumn <- corona_individual$sex
+length(sexColumn)
+sexColumn_Unique <- unique(sexColumn)
+sexColumn_Unique
+summary(corona_individual$sex)
+plot(corona_individual$sex)
+#modesex="male" #mode(corona_individual$sex)
+#corona_individual$sex=ifelse(is.na(corona_individual$sex),modesex,corona_individual$sex)
+summary(corona_individual$sex)
+plot(corona_individual$sex, col="orange")
+
+corona_individual$gender <- NULL
+
+corona_individual$gender[corona_individual$sex==""]<-"male"
+corona_individual$gender[corona_individual$sex=="female"]<-"female"
+corona_individual$gender[corona_individual$sex=="male"]<-"male"
+corona_individual$gender[corona_individual$sex==NA]<-"male"
+
+corona_individual$gender = as.factor(corona_individual$gender)
+
+genderColumn <- corona_individual$gender
+length(genderColumn)
+genderColumn_Unique <- unique(genderColumn)
+genderColumn_Unique
+summary(corona_individual$gender)
+plot(corona_individual$gender)
+```
+#country
+```{r, data preprocessing,country}
+corona_individual$country = as.factor(corona_individual$country)
+countryColumn <- corona_individual$country
+length(countryColumn)
+countryColumn_Unique <- unique(countryColumn)
+countryColumn_Unique
+summary(corona_individual$country)
+table(corona_individual$country)
+
+plot(corona_individual$country)
+```
+## travel_history_location
+```{, data preprocessing,travel_history_location}
+corona_individual$travel_history_location = as.factor(corona_individual$travel_history_location)
+travel_history_locationColumn <- corona_individual$travel_history_location
+length(travel_history_locationColumn)
+travel_history_locationColumn_Unique <- unique(travel_history_locationColumn)
+travel_history_locationColumn_Unique
+summary(corona_individual$travel_history_location)
+plot(corona_individual$travel_history_location)
+mode_travel=mode(corona_individual$travel_history_location)
+corona_individual$travel_history_location=ifelse(is.na(corona_individual$travel_history_location),mode_travel,corona_individual$travel_history_location)
+summary(corona_individual$travel_history_location)
+plot(corona_individual$travel_history_location)
+```
+
+```{r, finalized dataset}
+#corona_individual$country <- apply(corona_individual$country,2,as.character)
+corona_individual=corona_individual%>%mutate_at("country", as.character)
+#corona_individual = select(corona_individual,age,sex,longitude, latitude,chronic_disease_binary,chronic_disease_1, chronic_disease_2, Status)
+corona_subset = select(corona_individual,AgeGroup,gender,longitude, latitude,chronic_disease_binary,chronic_disease_1, main_symptom, Status)
+mysubset<-subset(corona_subset, Status=="Critical" | Status=="Stable")
+dim(mysubset)
+str(mysubset)
+
+mysubset$HealthStatus <- 0
+
+mysubset$HealthStatus[mysubset$Status=="Stable"]<-"Stable"
+mysubset$HealthStatus[mysubset$Status=="Critical"]<-"Critical"
+mysubset$HealthStatus = as.factor(mysubset$HealthStatus)
+mysubset =select(mysubset, -Status)
+dim(mysubset)
+str(mysubset)
+mysubset <- data.frame(mysubset)
+path <- "D:\\Syracuse\\Spring 2020\\CIS 700 Machine Learning\\NEWCOVID"
+write.csv(mysubset, file.path(path, "covid_cleanData.csv"), row.names=FALSE)
+mysubset <- read.csv("covid_cleanData.csv")
+dim(mysubset)
+str(mysubset)
+mysubset$HealthStatus = as.factor(mysubset$HealthStatus)
+mysubset$gender = as.factor(mysubset$gender)
+
+mysubset$chronic_disease_binary = as.factor(mysubset$chronic_disease_binary)
+mysubset$chronic_disease_1 = as.factor(mysubset$chronic_disease_1)
+mysubset$main_symptom = as.factor(mysubset$main_symptom)
+mysubset$AgeGroup = as.factor(mysubset$AgeGroup)
+dim(mysubset)
+str(mysubset)
+```

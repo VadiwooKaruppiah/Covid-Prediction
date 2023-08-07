@@ -1,0 +1,382 @@
+---
+title: "covid_ensembleModel"
+author: "Vadiwoo Karuppiah"
+date: "6/9/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(corrplot)
+library(ggthemes)
+library(DT)
+library(tidyverse)
+library(ggcorrplot)
+library(caret)
+library(rlang)
+library(FSelector)
+library(FactoMineR)
+library(rpart.plot)
+library(ROCR)
+library(klaR)
+library(e1071)
+
+```
+## VIEW OF RAW DATA 
+```{r,view raw data}
+mysubset <- read.csv("covid_cleanData.csv")#  stringsAsFactors = F)
+dim(mysubset)
+str(mysubset)
+mysubset$HealthStatus = as.factor(mysubset$HealthStatus)
+mysubset$gender = as.factor(mysubset$gender)
+
+mysubset$chronic_disease_binary = as.factor(mysubset$chronic_disease_binary)
+mysubset$chronic_disease_1 = as.factor(mysubset$chronic_disease_1)
+mysubset$main_symptom = as.factor(mysubset$main_symptom)
+mysubset$AgeGroup = as.factor(mysubset$AgeGroup)
+dim(mysubset)
+str(mysubset)
+```
+## Data Splitting
+```{r, Data splitting}
+## Data Splitting
+
+
+datasample <- sample(2, nrow(mysubset), replace=TRUE,prob = c(0.8,0.2))
+
+traindata <- mysubset[datasample==1,]
+testdata <- mysubset[datasample==2,]
+dim(traindata)
+dim(testdata)
+
+```
+
+```{r, ensemble :data related, fig.dim = c(6, 6)}
+control <- trainControl(method = "cv", number = 10, savePredictions = 'final', classProbs = T)
+seed <- 7
+metric <- "Accuracy"
+# Bagged CART
+#set.seed(seed)
+#Defining the predictors and outcome
+predictors<-c("gender", "AgeGroup", "longitude", "latitude","main_symptom","chronic_disease_1","chronic_disease_binary")
+outcomeName<-'HealthStatus'
+ptm <- proc.time()  
+fit.rpart <- train(traindata[,predictors],traindata[,outcomeName], method="rpart", trControl = control, tuneLength=3)
+proc.time() - ptm
+ptm <- proc.time()  
+fit.gbm <- train(traindata[,predictors],traindata[,outcomeName],method="gbm", trControl = control, tuneLength=3)
+proc.time() - ptm
+ptm <- proc.time()  
+fit.rf <- train(traindata[,predictors],traindata[,outcomeName], method="rf",  trControl = control, tuneLength=3)
+proc.time() - ptm
+ptm <- proc.time()  
+fit.nb <- train(traindata[,predictors],traindata[,outcomeName], method="nb",  trControl = control, tuneLength=3)
+proc.time() - ptm
+
+
+# summarize results
+bagging_results <- resamples(list(rpart=fit.rpart, rf=fit.rf))
+summary(bagging_results)
+dotplot(bagging_results)
+
+#predictions
+testdata$predRpart<-predict(object = fit.rpart,testdata[,predictors])
+confusionMatrix(testdata$HealthStatus, testdata$predRpart)
+
+
+testdata$predGbm<-predict(object = fit.gbm,testdata[,predictors])
+confusionMatrix(testdata$HealthStatus, testdata$predGbm)
+
+
+testdata$predRF<-predict(object = fit.rf,testdata[,predictors])
+confusionMatrix(testdata$HealthStatus, testdata$predRF)
+
+
+testdata$predNB<-predict(object = fit.nb,testdata[,predictors])
+confusionMatrix(testdata$HealthStatus, testdata$predNB)
+
+#Predicting the probabilities
+testdata$predRpart_prob<-predict(object = fit.rpart,testdata[,predictors],type='prob')
+
+testdata$predRF_prob<-predict(object = fit.rf,testdata[,predictors],type='prob')
+
+testdata$predGbm_prob<-predict(object = fit.gbm,testdata[,predictors],type='prob')
+
+testdata$predNB_prob<-predict(object = fit.nb,testdata[,predictors],type='prob')
+library(pROC)
+aucDT <-auc(testdata$HealthStatus,testdata$predRpart_prob[,2])
+aucRF <-auc(testdata$HealthStatus,testdata$predRF_prob[,2])
+aucGBM <-auc(testdata$HealthStatus,testdata$predGbm_prob[,2])
+aucNB <-auc(testdata$HealthStatus,testdata$predNB_prob[,2])
+  
+par(pty ="s")
+#https://www.dlology.com/blog/simple-guide-on-how-to-generate-roc-plot-for-keras-classifier/
+plot(roc(testdata$HealthStatus,testdata$predRpart_prob[,2]),legacy.axes = TRUE,main = "ROC Curve for Ensembled Models: Data Related", col="#377eb8",lwd = 4,type = "l",xlab = "False Positive Rate", ylab = "True positive Rate") 
+
+plot(roc(testdata$HealthStatus,testdata$predRF_prob[,2]),legacy.axes = TRUE,col="red",lwd = 2,type = "l",xlab = "False Positive Rate", ylab = "True positive Rate",add= TRUE)
+
+plot(roc(testdata$HealthStatus,testdata$predGbm_prob[,2]),legacy.axes = TRUE,col="orange",lwd = 2,type = "l",xlab = "False Positive Rate", ylab = "True positive Rate",add= TRUE)
+
+plot(roc(testdata$HealthStatus,testdata$predNB_prob[,2]),legacy.axes = TRUE,col="green",lwd = 2,type = "l",xlab = "False Positive Rate", ylab = "True positive Rate",add= TRUE, )
+
+
+legend("bottomright", c(sprintf("DT (AUC = %.4f )",aucDT),sprintf("RF (AUC = %.4f )",aucRF), sprintf("GBM (AUC = %.4f )",aucGBM), sprintf("NB (AUC = %.4f )",aucNB)), lwd = 2, lty=1, 
+    col = c("#377eb8", "red","orange", "green"), xpd=TRUE, bty="n")
+
+#Majority Voting
+testdata$pred_majority<- as.factor(ifelse(testdata$predRF=='Stable' & testdata$predGbm=='Stable' & testdata$predNB=='Stable' 
+                                & testdata$predRpart=='Stable','Stable',
+                                ifelse(testdata$predRF=='Stable' & testdata$predGbm=='Stable'
+                                       & testdata$predNB=='Stable','Stable',
+                                        ifelse(testdata$predGbm=='Stable' & testdata$predNB=='Stable'
+                                               & testdata$predRpart=='Stable','Stable',  
+                                                 ifelse(testdata$predNB=='Stable' & testdata$predRF=='Stable'
+                                                        & testdata$predRpart=='Stable','Stable',
+                                                        ifelse(testdata$predNB=='Stable' & testdata$predRF=='Stable' 
+                                                               & testdata$predRpart=='Stable','Stable',
+                                                               ifelse(testdata$predNB=='Stable' 
+                                                                      & testdata$predGbm=='Stable','Stable' ,'Critical')))))))
+
+summary(testdata$pred_majority)
+table(testdata$pred_majority)
+#dim(testdata$HealthStatus)
+table_mat_test <- table(testdata$HealthStatus, testdata$pred_majority)
+table_mat_test
+accuracy_test <- sum(diag(table_mat_test)) / sum(table_mat_test)
+accuracy_test
+print(paste('Accuracy for test', accuracy_test))
+
+
+
+```
+
+```{r, ensamble : feature related I,fig.dim = c(6, 6)}
+#https://cran.r-project.org/web/packages/fscaret/vignettes/fscaret.pdf
+#https://www.youtube.com/watch?v=dTRDZBltCTg
+library(fscaret)
+covidDummy <- dummyVars("~.", data = mysubset, fullRank = F)
+covidDF <- as.data.frame(predict(covidDummy, mysubset))
+#head(covidDF)
+#splitIndex <- createDataPartition(covidDF$HealthStatus, p= .75)
+#trainDF <- covidDF[splitIndex,]
+#testDF <- covidDF[-splitIndex,]
+
+datasampleEnsemble <- sample(2, nrow(covidDF), replace=TRUE,prob = c(0.7,0.3))
+
+trainDF <- covidDF[datasampleEnsemble==1,]
+testDF <- covidDF[datasampleEnsemble==2,]
+
+
+
+fsModels <- c("treebag", "gbm", "rf", "rpart")
+fsTreeBag<- fscaret(trainDF,testDF, myTimeLimit = 80, preprocessData = TRUE, Used.funcRegPred = "treebag", with.labels=TRUE, supress.output = FALSE, no.cores=2)
+names(fsTreeBag)
+fsTreeBag$VarImp
+fsTreeBag$PPlabels
+
+fsGBM<- fscaret(trainDF,testDF, myTimeLimit = 80, preprocessData = TRUE, Used.funcRegPred = "gbm", with.labels=TRUE, supress.output = FALSE, no.cores=2)
+fsGBM$VarImp
+fsGBM$PPlabels
+
+fsRF<- fscaret(trainDF,testDF, myTimeLimit = 80, preprocessData = TRUE, Used.funcRegPred = "rf", with.labels=TRUE, supress.output = FALSE, no.cores=2)
+fsRF$VarImp
+fsRF$PPlabels
+
+fsRPART<- fscaret(trainDF,testDF, myTimeLimit = 80, preprocessData = TRUE, Used.funcRegPred = "rpart", with.labels=TRUE, supress.output = FALSE, no.cores=2)
+fsRPART$VarImp
+fsRPART$PPlabels
+
+control <- trainControl(method = "cv", number = 5, savePredictions = 'final', classProbs = T) 
+seed <- 7
+metric <- "Accuracy"
+
+## Selecting Features & Data Splitting
+#Defining the predictors and outcome
+predictors<-c("gender", "AgeGroup", "longitude", "latitude")
+outcomeName<-'HealthStatus'
+
+
+
+
+
+
+set.seed(seed)
+ptm <- proc.time()  
+fit.rpart <- train(traindata[,predictors],traindata[,outcomeName], method="rpart", metric= metric, trControl = control)
+proc.time() - ptm
+ptm <- proc.time()  
+fit.gbm <- train(traindata[,predictors],traindata[,outcomeName],method="gbm", metric=metric,trControl = control)
+proc.time() - ptm
+ptm <- proc.time() 
+fit.rf <- train(traindata[,predictors],traindata[,outcomeName], method="rf", metric=metric, trControl = control)
+proc.time() - ptm
+ptm <- proc.time()  
+fit.nb <- train(traindata[,predictors],traindata[,outcomeName], method="nb", metric=metric, trControl = control)
+proc.time() - ptm
+#predictions
+testdata$predRpart<-predict(object = fit.rpart,testdata[,predictors])
+confusionMatrix(testdata$HealthStatus, testdata$predRpart)
+
+
+testdata$predGbm<-predict(object = fit.gbm,testdata[,predictors])
+confusionMatrix(testdata$HealthStatus, testdata$predGbm)
+
+
+testdata$predRF<-predict(object = fit.rf,testdata[,predictors])
+confusionMatrix(testdata$HealthStatus, testdata$predRF)
+
+
+testdata$predNB<-predict(object = fit.nb,testdata[,predictors])
+confusionMatrix(testdata$HealthStatus, testdata$predNB)
+
+#Predicting the probabilities
+testdata$predRpart_prob<-predict(object = fit.rpart,testdata[,predictors],type='prob')
+
+testdata$predRF_prob<-predict(object = fit.rf,testdata[,predictors],type='prob')
+
+testdata$predGbm_prob<-predict(object = fit.gbm,testdata[,predictors],type='prob')
+
+testdata$predNB_prob<-predict(object = fit.nb,testdata[,predictors],type='prob')
+library(pROC)
+
+aucDT <-auc(testdata$HealthStatus,testdata$predRpart_prob[,2])
+aucRF <-auc(testdata$HealthStatus,testdata$predRF_prob[,2])
+aucGBM <-auc(testdata$HealthStatus,testdata$predGbm_prob[,2])
+aucNB <-auc(testdata$HealthStatus,testdata$predNB_prob[,2])
+par(pty ="s")
+plot(roc(testdata$HealthStatus,testdata$predRpart_prob[,2]),legacy.axes = TRUE,main = "ROC Curve for Ensembled Models: Features Related",col="#377eb8",lwd = 4,type = "l",xlab = "False Positive Rate", ylab = "True positive Rate")
+
+plot(roc(testdata$HealthStatus,testdata$predRF_prob[,2]),legacy.axes = TRUE,col="red",lwd = 2,type = "l",add= TRUE,)
+
+plot(roc(testdata$HealthStatus,testdata$predGbm_prob[,2]),legacy.axes = TRUE,col="orange",lwd = 2,type = "l",add= TRUE)
+
+plot(roc(testdata$HealthStatus,testdata$predNB_prob[,2]),legacy.axes = TRUE,col="green",lwd = 2,type = "l",add= TRUE)
+
+legend("bottomright", c(sprintf("DT (AUC = %.4f )",aucDT),sprintf("RF (AUC = %.4f )",aucRF), sprintf("GBM (AUC = %.4f )",aucGBM), sprintf("NB (AUC = %.4f )",aucNB)), lwd = 2, lty=1, 
+    col = c("#377eb8", "red","orange", "green"), xpd=TRUE, bty="n")
+
+#Majority Voting
+testdata$pred_majority<- as.factor(ifelse(testdata$predRF=='Stable' & testdata$predGbm=='Stable' & testdata$predNB=='Stable' 
+                                & testdata$predRpart=='Stable','Stable',
+                                ifelse(testdata$predRF=='Stable' & testdata$predGbm=='Stable' & testdata$predNB=='Stable','Stable',
+                                        ifelse(testdata$predGbm=='Stable' & testdata$predNB=='Stable'& testdata$predRpart=='Stable','Stable',  
+                                                 ifelse(testdata$predNB=='Stable' & testdata$predRF=='Stable'& testdata$predRpart=='Stable','Stable',
+                                                        ifelse(testdata$predNB=='Stable' & testdata$predRF=='Stable' 
+                                                               & testdata$predRpart=='Stable','Stable',
+                                                               ifelse(testdata$predNB=='Stable' & testdata$predGbm=='Stable','Stable' ,'Critical')))))))
+
+summary(testdata$pred_majority)
+table(testdata$pred_majority)
+#dim(testdata$HealthStatus)
+table_mat_test <- table(testdata$HealthStatus, testdata$pred_majority)
+table_mat_test
+accuracy_test <- sum(diag(table_mat_test)) / sum(table_mat_test)
+accuracy_test
+print(paste('Accuracy for Majority Voting', accuracy_test))
+
+
+```
+# FEATURES SELECTED FROM VarImp from training base models
+```{r, ensemble : feature related II }
+
+control <- trainControl(method = "cv", number = 5, savePredictions = 'final', classProbs = T) 
+seed <- 7
+metric <- "Accuracy"
+
+# Decision Tree  Important Features
+predictors<-c("main_symptom", "chronic_disease_binary","chronic_disease_1", "longitude", "latitude")
+outcomeName<-'HealthStatus'
+
+set.seed(seed)
+ptm <- proc.time()  
+fit.rpart <- train(traindata[,predictors],traindata[,outcomeName], method="rpart", metric= metric, trControl = control)
+proc.time() - ptm
+
+predictors<-c("main_symptom", "AgeGroup", "longitude", "latitude")
+outcomeName<-'HealthStatus'
+ptm <- proc.time()  
+fit.gbm <- train(traindata[,predictors],traindata[,outcomeName],method="gbm", metric=metric,trControl = control)
+proc.time() - ptm
+
+predictors<-c("main_symptom", "gender","chronic_disease_1",  "AgeGroup", "longitude", "latitude")
+outcomeName<-'HealthStatus'
+ptm <- proc.time() 
+fit.rf <- train(traindata[,predictors],traindata[,outcomeName], method="rf", metric=metric, trControl = control)
+proc.time() - ptm
+
+predictors<-c("main_symptom", "chronic_disease_binary","chronic_disease_1",  "AgeGroup", "longitude", "latitude")
+outcomeName<-'HealthStatus'
+ptm <- proc.time()  
+fit.nb <- train(traindata[,predictors],traindata[,outcomeName], method="nb", metric=metric, trControl = control)
+proc.time() - ptm
+
+#predictions
+predictors<-c("main_symptom", "chronic_disease_binary","chronic_disease_1", "longitude", "latitude")
+testdata$predRpart<-predict(object = fit.rpart,testdata[,predictors])
+confusionMatrix(testdata$HealthStatus, testdata$predRpart)
+testdata$predRpart_prob<-predict(object = fit.rpart,testdata[,predictors],type='prob')
+
+predictors<-c("main_symptom", "AgeGroup", "longitude", "latitude")
+testdata$predGbm<-predict(object = fit.gbm,testdata[,predictors])
+confusionMatrix(testdata$HealthStatus, testdata$predGbm)
+testdata$predGbm_prob<-predict(object = fit.gbm,testdata[,predictors],type='prob')
+
+predictors<-c("main_symptom", "gender","chronic_disease_1",  "AgeGroup", "longitude", "latitude")
+testdata$predRF<-predict(object = fit.rf,testdata[,predictors])
+confusionMatrix(testdata$HealthStatus, testdata$predRF)
+testdata$predRF_prob<-predict(object = fit.rf,testdata[,predictors],type='prob')
+
+predictors<-c("main_symptom", "chronic_disease_binary","chronic_disease_1",  "AgeGroup", "longitude", "latitude")
+testdata$predNB<-predict(object = fit.nb,testdata[,predictors])
+confusionMatrix(testdata$HealthStatus, testdata$predNB)
+testdata$predNB_prob<-predict(object = fit.nb,testdata[,predictors],type='prob')
+
+#Predicting the probabilities
+
+
+
+
+
+
+
+library(pROC)
+
+aucDT <-auc(testdata$HealthStatus,testdata$predRpart_prob[,2])
+aucRF <-auc(testdata$HealthStatus,testdata$predRF_prob[,2])
+aucGBM <-auc(testdata$HealthStatus,testdata$predGbm_prob[,2])
+aucNB <-auc(testdata$HealthStatus,testdata$predNB_prob[,2])
+par(pty ="s")
+plot(roc(testdata$HealthStatus,testdata$predRpart_prob[,2]),legacy.axes = TRUE,main = "ROC Curve for Ensembled Models: Features Related",col="#377eb8",lwd = 4,type = "l",xlab = "False Positive Rate", ylab = "True positive Rate")
+
+plot(roc(testdata$HealthStatus,testdata$predRF_prob[,2]),legacy.axes = TRUE,col="red",lwd = 2,type = "l",add= TRUE,)
+
+plot(roc(testdata$HealthStatus,testdata$predGbm_prob[,2]),legacy.axes = TRUE,col="orange",lwd = 2,type = "l",add= TRUE)
+
+plot(roc(testdata$HealthStatus,testdata$predNB_prob[,2]),legacy.axes = TRUE,col="green",lwd = 2,type = "l",add= TRUE)
+
+legend("bottomright", c(sprintf("DT (AUC = %.4f )",aucDT),sprintf("RF (AUC = %.4f )",aucRF), sprintf("GBM (AUC = %.4f )",aucGBM), sprintf("NB (AUC = %.4f )",aucNB)), lwd = 2, lty=1, 
+    col = c("#377eb8", "red","orange", "green"), xpd=TRUE, bty="n")
+
+#Majority Voting
+testdata$pred_majority<- as.factor(ifelse(testdata$predRF=='Stable' & testdata$predGbm=='Stable' & testdata$predNB=='Stable' 
+                                & testdata$predRpart=='Stable','Stable',
+                                ifelse(testdata$predRF=='Stable' & testdata$predGbm=='Stable' & testdata$predNB=='Stable','Stable',
+                                        ifelse(testdata$predGbm=='Stable' & testdata$predNB=='Stable'& testdata$predRpart=='Stable','Stable',  
+                                                 ifelse(testdata$predNB=='Stable' & testdata$predRF=='Stable'& testdata$predRpart=='Stable','Stable',
+                                                        ifelse(testdata$predNB=='Stable' & testdata$predRF=='Stable' 
+                                                               & testdata$predRpart=='Stable','Stable',
+                                                               ifelse(testdata$predNB=='Stable' & testdata$predGbm=='Stable','Stable' ,'Critical')))))))
+
+summary(testdata$pred_majority)
+table(testdata$pred_majority)
+#dim(testdata$HealthStatus)
+table_mat_test <- table(testdata$HealthStatus, testdata$pred_majority)
+table_mat_test
+accuracy_test <- sum(diag(table_mat_test)) / sum(table_mat_test)
+accuracy_test
+print(paste('Accuracy for Majority Voting', accuracy_test))
+
+```
